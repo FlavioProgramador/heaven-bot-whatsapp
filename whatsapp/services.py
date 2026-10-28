@@ -161,6 +161,7 @@ def process_inbound_message(contact: Contact, body: str) -> str | None:
             schedules = list(Schedule.objects.filter(course=course, is_active=True).order_by("weekday", "starts_at")[:12])
             lines = [f"{course.name}", course.description.strip() or "Descrição ainda não cadastrada."]
             lines.append(course.formatted_price())
+            lines.append(f"Frequência padrão provisória: {course.lessons_per_week} aula(s) por semana; confirme a frequência com a equipe.")
             if schedules:
                 lines.append("Horários divulgados (não representam vaga confirmada):")
                 lines.extend(f"- {s.get_weekday_display()}: {s.starts_at:%H:%M} às {s.ends_at:%H:%M}" for s in schedules)
@@ -187,6 +188,7 @@ def _all_course_details() -> str:
     for course in courses:
         lines.append(f"\n{course.name} ({course.category.name})")
         lines.append(course.formatted_price())
+        lines.append(f"Frequência padrão provisória: {course.lessons_per_week} aula(s) por semana; confirme a frequência com a equipe.")
         schedules = list(course.schedules.filter(is_active=True).order_by("weekday", "starts_at")[:4])
         if schedules:
             lines.extend(f"- {s.get_weekday_display()}: {s.starts_at:%H:%M} às {s.ends_at:%H:%M}" for s in schedules)
