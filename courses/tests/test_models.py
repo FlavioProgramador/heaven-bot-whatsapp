@@ -2,7 +2,8 @@ from decimal import Decimal
 
 from django.test import TestCase
 
-from courses.models import Category, Course
+from courses.models import Category, Course, Schedule
+from courses.services import active_courses, active_schedules
 
 
 class CourseModelTests(TestCase):
@@ -23,8 +24,18 @@ class CourseModelTests(TestCase):
         self.assertEqual(course.formatted_price(), "Preço a confirmar com a equipe.")
 
     def test_inactive_courses_are_excluded_from_active_catalog(self):
-        from courses.services import active_courses
-
         Course.objects.create(name="Ativo", category=self.category, is_active=True)
         Course.objects.create(name="Inativo", category=self.category, is_active=False)
         self.assertEqual(list(active_courses().values_list("name", flat=True)), ["Ativo"])
+
+    def test_active_schedules_are_filtered(self):
+        course = Course.objects.create(name="Teclado", category=self.category)
+        Schedule.objects.create(
+            course=course, weekday=Schedule.Weekday.MONDAY,
+            starts_at="15:00", ends_at="16:00", is_active=True
+        )
+        Schedule.objects.create(
+            course=course, weekday=Schedule.Weekday.TUESDAY,
+            starts_at="16:00", ends_at="17:00", is_active=False
+        )
+        self.assertEqual(list(active_schedules(course).values_list("weekday", flat=True)), [Schedule.Weekday.MONDAY])
