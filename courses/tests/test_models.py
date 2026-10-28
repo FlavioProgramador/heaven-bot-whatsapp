@@ -23,6 +23,14 @@ class CourseModelTests(TestCase):
         course = Course.objects.create(name="Ginástica Rítmica", category=self.category, price=Decimal("100.00"), billing_unit=Course.BillingUnit.MONTHLY)
         self.assertNotIn("Viva", course.formatted_price())
 
+    def test_weekly_frequency_is_provisional_until_confirmed(self):
+        course = Course.objects.create(name="Dança", category=self.category, lessons_per_week=1)
+        from whatsapp.services import _frequency_text
+        self.assertIn("1 aula por semana", _frequency_text(course))
+        self.assertIn("provisória", _frequency_text(course))
+        course.frequency_confirmed = True
+        self.assertNotIn("provisória", _frequency_text(course))
+
     def test_missing_price_is_not_invented(self):
         course = Course.objects.create(name="Piano", category=self.category)
         self.assertEqual(course.formatted_price(), "Preço a confirmar com a equipe.")
