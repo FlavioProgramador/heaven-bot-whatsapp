@@ -146,6 +146,7 @@ def process_inbound_message(contact: Contact, body: str) -> str | None:
         lines = [f"Cursos de {category.name}:"]
         for i, course in enumerate(courses, start=1):
             lines.append(f"{i} - {course.name}: {course.formatted_price()}")
+            lines.append(_frequency_text(course))
         lines.append("\nDigite 0 para voltar ao menu principal.")
         return "\n".join(lines)
 
