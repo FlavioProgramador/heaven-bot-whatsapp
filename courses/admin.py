@@ -18,7 +18,7 @@ class ScheduleInline(admin.TabularInline):
 
 @admin.register(Course)
 class CourseAdmin(admin.ModelAdmin):
-    list_display = ("name", "category", "price", "billing_unit", "is_active", "updated_at")
+    list_display = ("name", "category", "price", "viva_price", "lessons_per_week", "billing_unit", "is_active", "updated_at")
     list_filter = ("is_active", "category", "billing_unit")
     search_fields = ("name", "description", "category__name")
     autocomplete_fields = ("category",)
