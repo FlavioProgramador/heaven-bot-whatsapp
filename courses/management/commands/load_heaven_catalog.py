@@ -35,7 +35,6 @@ class Command(BaseCommand):
                 "price": Decimal(item["price"]),
                 "viva_price": Decimal(item["viva_price"]) if item["viva_price"] else None,
                 "billing_unit": Course.BillingUnit.MONTHLY,
-                "lessons_per_week": 1,
                 "is_active": True,
                 "additional_information": (
                     "Frequência provisória: 1 aula por semana; confirmar com a equipe."
