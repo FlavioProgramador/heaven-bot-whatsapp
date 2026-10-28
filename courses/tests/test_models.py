@@ -14,6 +14,15 @@ class CourseModelTests(TestCase):
         course = Course.objects.create(name="Violão", category=self.category, price=Decimal("125.50"), billing_unit=Course.BillingUnit.MONTHLY)
         self.assertEqual(course.formatted_price(), "R$ 125,50 — mensalidade.")
 
+    def test_viva_price_and_provisional_frequency_are_formatted(self):
+        course = Course.objects.create(name="Violão", category=self.category, price=Decimal("110.00"), viva_price=Decimal("100.00"), billing_unit=Course.BillingUnit.MONTHLY, lessons_per_week=1)
+        self.assertEqual(course.formatted_price(), "R$ 110,00 — mensalidade. Alunos da escola Viva: R$ 100,00 — mensalidade.")
+        self.assertEqual(course.lessons_per_week, 1)
+
+    def test_missing_viva_discount_is_not_invented(self):
+        course = Course.objects.create(name="Ginástica Rítmica", category=self.category, price=Decimal("100.00"), billing_unit=Course.BillingUnit.MONTHLY)
+        self.assertNotIn("Viva", course.formatted_price())
+
     def test_missing_price_is_not_invented(self):
         course = Course.objects.create(name="Piano", category=self.category)
         self.assertEqual(course.formatted_price(), "Preço a confirmar com a equipe.")
