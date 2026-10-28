@@ -1,19 +1,19 @@
 # Heaven Bot WhatsApp
 
-Robô determinístico de atendimento inicial do Heaven usando Python, Django, PostgreSQL e a API oficial WhatsApp Business Platform (Cloud API). Não usa IA, automação do WhatsApp Web ou provedores intermediários.
+Robô determinístico de atendimento inicial do Heaven com Python, Django, PostgreSQL e a API oficial WhatsApp Business Platform (Cloud API). Não usa IA, automação do WhatsApp Web ou provedor intermediário.
 
-## Estado do projeto
-O repositório contém a base Django, modelos de categorias/cursos/horários/contatos/logs, configurações institucionais, Django Admin, serviço inicial da Cloud API, webhook com verificação GET e assinatura HMAC SHA-256 no POST, menu por regras, migrações iniciais, testes e workflow de CI.
+## Estado
+A base contém modelos para categorias, cursos, horários, contatos, mensagens e configuração institucional; Django Admin; integração inicial com a Cloud API; webhook GET/POST com verificação do desafio e assinatura HMAC; testes e workflow de CI.
 
-**Antes de produção:** execute os testes, valide credenciais Meta de teste e revise idempotência/retentativas, logs/retenção de dados pessoais, segurança e janela de atendimento. Nenhuma credencial real foi adicionada nem número comercial alterado.
+**Ainda requer validação antes de produção.** Nenhuma credencial real foi incluída e nenhum número comercial foi alterado.
 
 ## Instalação no Windows (PowerShell)
-1. Instale Python e PostgreSQL; confirme:
+1. Instale Python e PostgreSQL e confirme:
    ```powershell
    py --version
    psql --version
    ```
-2. Crie usuário e banco PostgreSQL:
+2. No PostgreSQL, crie o banco e usuário:
    ```sql
    CREATE USER heaven_bot WITH PASSWORD 'substitua-por-uma-senha-forte';
    CREATE DATABASE heaven_bot OWNER heaven_bot;
@@ -26,7 +26,11 @@ O repositório contém a base Django, modelos de categorias/cursos/horários/con
    pip install -r requirements.txt
    Copy-Item .env.example .env
    ```
-4. Configure `DATABASE_URL`; codifique caracteres especiais da senha para URL. Gere a chave com `python -c "import secrets; print(secrets.token_urlsafe(50))"` e use em `DJANGO_SECRET_KEY`. Use DEBUG apenas localmente.
+4. Configure `DATABASE_URL` e `DJANGO_SECRET_KEY` no `.env`. Codifique caracteres reservados da senha para URL. Gere uma chave com:
+   ```powershell
+   python -c "import secrets; print(secrets.token_urlsafe(50))"
+   ```
+   Mantenha `DJANGO_DEBUG=True` somente localmente.
 5. Execute:
    ```powershell
    python manage.py check
@@ -35,18 +39,23 @@ O repositório contém a base Django, modelos de categorias/cursos/horários/con
    python manage.py test
    python manage.py runserver
    ```
-6. Acesse `http://127.0.0.1:8000/admin/` e cadastre somente dados oficiais do Heaven.
+6. Acesse `http://127.0.0.1:8000/admin/` e cadastre dados oficiais do Heaven. Não há cursos, preços ou endereço fictícios pré-cadastrados.
 
 ## WhatsApp Cloud API
-Configure em `.env`: `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_ACCOUNT_ID`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_API_VERSION`. Nunca versione segredos.
+Configure no `.env`: `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_ACCOUNT_ID`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET` e `WHATSAPP_API_VERSION`. Não versione credenciais.
 
-Configure callback HTTPS `https://SEU_HOST/webhooks/whatsapp/`. O GET valida o verify token; o POST valida `X-Hub-Signature-256` usando o corpo bruto e o App Secret. Comece com número de teste da Meta. Não migre o número comercial real sem autorização explícita. Túnel local é útil para teste, mas não é infraestrutura de produção.
+Configure callback HTTPS `https://SEU_HOST/webhooks/whatsapp/`. O GET usa o verify token; o POST valida `X-Hub-Signature-256` usando o corpo bruto e o App Secret. Comece pelo número de teste da Meta. Não altere nem migre o número comercial real sem autorização explícita. Um túnel local só serve para testes, não para produção.
 
-## Fluxo
-Categorias e cursos vêm do banco e precisam estar ativos. Preços ausentes são marcados como a confirmar. Horários são informativos e não confirmam vaga. Localização só aparece quando cadastrada. Atendimento humano pausa o robô até a equipe liberar o contato no Admin. `0` ou `MENU` volta ao menu, exceto durante atendimento humano. Não existe sincronização de mensagens enviadas manualmente pelo WhatsApp Business nem chat integrado para atendentes.
+## Atendimento
+- O menu usa categorias e cursos ativos cadastrados.
+- Preço ausente é mostrado como “a confirmar”; horário não significa vaga garantida.
+- Localização só aparece quando a equipe cadastra endereço/link.
+- Pedido de atendimento humano pausa respostas automáticas até a equipe reativar o contato no Admin.
+- `0` ou `MENU` retorna ao menu, exceto durante atendimento humano.
+- A primeira versão não sincroniza mensagens enviadas manualmente pelo aplicativo WhatsApp Business nem fornece uma interface de chat para atendentes.
 
 ## Testes
-Execute `python manage.py test`. Testes externos devem usar mocks e não enviar mensagens reais. O workflow do GitHub Actions roda checagem e testes na branch de implementação.
+Execute `python manage.py test`. Testes não devem enviar mensagens reais. O workflow no GitHub Actions executa a checagem Django e os testes quando a branch de implementação receber novos commits.
 
-## Custos e limitações
-Não há IA ou intermediário. Custos dependem das regras comerciais vigentes da Meta e de eventual hospedagem/túnel. O bot só responde enquanto o backend estiver ativo. Falhas de envio são registradas e não repetidas cegamente; antes da produção, implemente reconciliação/retentativa segura e política documentada de retenção de logs.
+## Limitações antes da produção
+A integração é síncrona. Após falha/timeout de envio, eventos duplicados não são reenviados cegamente, para evitar mensagens duplicadas; é necessário implementar reconciliação/retentativa segura (por exemplo, uma transactional outbox). Revise a seleção de cursos no menu, política de retenção de dados pessoais, logs, permissões, HTTPS e regras de janela de atendimento. O custo depende dos termos vigentes da Meta e de eventual hospedagem/túnel; não há garantia universal de custo zero ou disponibilidade 24/7 num PC pessoal.
