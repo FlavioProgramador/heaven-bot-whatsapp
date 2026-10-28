@@ -11,12 +11,7 @@ class CourseModelTests(TestCase):
         self.category = Category.objects.create(name="Música")
 
     def test_course_price_is_formatted_with_billing_unit(self):
-        course = Course.objects.create(
-            name="Violão",
-            category=self.category,
-            price=Decimal("125.50"),
-            billing_unit=Course.BillingUnit.MONTHLY,
-        )
+        course = Course.objects.create(name="Violão", category=self.category, price=Decimal("125.50"), billing_unit=Course.BillingUnit.MONTHLY)
         self.assertEqual(course.formatted_price(), "R$ 125,50 — mensalidade.")
 
     def test_missing_price_is_not_invented(self):
@@ -30,12 +25,6 @@ class CourseModelTests(TestCase):
 
     def test_active_schedules_are_filtered(self):
         course = Course.objects.create(name="Teclado", category=self.category)
-        Schedule.objects.create(
-            course=course, weekday=Schedule.Weekday.MONDAY,
-            starts_at="15:00", ends_at="16:00", is_active=True
-        )
-        Schedule.objects.create(
-            course=course, weekday=Schedule.Weekday.TUESDAY,
-            starts_at="16:00", ends_at="17:00", is_active=False
-        )
+        Schedule.objects.create(course=course, weekday=Schedule.Weekday.MONDAY, starts_at="15:00", ends_at="16:00", is_active=True)
+        Schedule.objects.create(course=course, weekday=Schedule.Weekday.TUESDAY, starts_at="16:00", ends_at="17:00", is_active=False)
         self.assertEqual(list(active_schedules(course).values_list("weekday", flat=True)), [Schedule.Weekday.MONDAY])
