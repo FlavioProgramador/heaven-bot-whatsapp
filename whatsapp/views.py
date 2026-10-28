@@ -19,17 +19,20 @@ def webhook(request):
         mode = request.GET.get("hub.mode", "")
         token = request.GET.get("hub.verify_token", "")
         challenge = request.GET.get("hub.challenge", "")
-        if mode == "subscribe" and settings.WHATSAPP_VERIFY_TOKEN and token == settings.WHATSAPP_VERIFY_TOKEN and challenge:
+        if (
+            mode == "subscribe"
+            and settings.WHATSAPP_VERIFY_TOKEN
+            and token == settings.WHATSAPP_VERIFY_TOKEN
+            and challenge
+        ):
             return HttpResponse(challenge, content_type="text/plain")
         return HttpResponse("Verificação inválida", status=403, content_type="text/plain")
 
     if len(request.body) > settings.WHATSAPP_WEBHOOK_MAX_BODY_BYTES:
         return JsonResponse({"error": "Payload muito grande."}, status=413)
-
     if not validate_webhook_signature(request.body, request.headers.get("X-Hub-Signature-256")):
         logger.warning("WhatsApp webhook signature validation failed")
         return JsonResponse({"error": "Assinatura inválida."}, status=401)
-
     try:
         payload = json.loads(request.body.decode("utf-8"))
     except (UnicodeDecodeError, json.JSONDecodeError):
@@ -37,9 +40,6 @@ def webhook(request):
     if not isinstance(payload, dict) or payload.get("object") != "whatsapp_business_account":
         return JsonResponse({"error": "Evento inválido."}, status=400)
 
-    # The handler is synchronous in this starter implementation; keep payload size bounded.
-    # Return a failure on processing errors so Meta can retry; the unique message ID prevents
-    # duplicate processing after the inbound event was recorded.
     try:
         process_webhook_payload(payload)
     except Exception:

@@ -1,11 +1,10 @@
-"""WhatsApp webhook payload parsing and idempotent message processing."""
+"""Parse Cloud API webhooks and process inbound messages once."""
 import logging
 
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
 from contacts.models import Contact
-from courses.models import Category
 from .models import MessageLog
 from .services import process_inbound_message, process_status_event, send_text_message
 
@@ -28,7 +27,6 @@ def process_webhook_payload(payload: dict) -> None:
             value = change.get("value", {})
             if not isinstance(value, dict):
                 continue
-
             statuses = value.get("statuses", [])
             if isinstance(statuses, list):
                 for status in statuses:
@@ -37,21 +35,20 @@ def process_webhook_payload(payload: dict) -> None:
                             process_status_event(status)
                         except Exception:
                             logger.exception("Failed processing WhatsApp status event")
-
             messages = value.get("messages", [])
             contacts_data = value.get("contacts", [])
-            if not isinstance(messages, list):
-                continue
-            display_name = ""
+            name = ""
             if isinstance(contacts_data, list) and contacts_data and isinstance(contacts_data[0], dict):
                 profile = contacts_data[0].get("profile", {})
                 if isinstance(profile, dict):
-                    display_name = str(profile.get("name", ""))[:160]
-
-            for message in messages:
-                if not isinstance(message, dict):
-                    continue
-                process_inbound_message_event(message, display_name)
+                    name = str(profile.get("name", ""))[:160]
+            if isinstance(messages, list):
+                for message in messages:
+                    if isinstance(message, dict):
+                        try:
+                            process_inbound_message_event(message, name)
+                        except Exception:
+                            logger.exception("Failed processing WhatsApp inbound message")
 
 
 def process_inbound_message_event(message: dict, display_name: str = "") -> None:
@@ -62,20 +59,15 @@ def process_inbound_message_event(message: dict, display_name: str = "") -> None
         logger.warning("Ignoring malformed WhatsApp message envelope")
         return
 
-    # Only text commands are supported. Other message types receive a deterministic menu hint.
     body = ""
     if message_type == "text":
         text_value = message.get("text", {})
         if isinstance(text_value, dict):
             body = str(text_value.get("body", ""))[:4000]
 
-    contact = Contact.objects.filter(phone_number=sender).first()
-    if contact is None:
-        contact = Contact.objects.create(phone_number=sender, name=display_name)
-
+    contact, _ = Contact.objects.get_or_create(phone_number=sender, defaults={"name": display_name})
     try:
         with transaction.atomic():
-            # Unique external ID makes Meta redelivery idempotent.
             record = MessageLog.objects.create(
                 external_message_id=message_id,
                 contact=contact,
@@ -87,10 +79,12 @@ def process_inbound_message_event(message: dict, display_name: str = "") -> None
         logger.info("Duplicate WhatsApp inbound event ignored")
         return
 
+    updates = ["last_contact_at"]
     contact.last_contact_at = timezone.now()
     if display_name and not contact.name:
         contact.name = display_name
-    contact.save(update_fields=["last_contact_at", "name"])
+        updates.append("name")
+    contact.save(update_fields=updates)
 
     reply = process_inbound_message(contact, body)
     if reply is None:
@@ -99,19 +93,21 @@ def process_inbound_message_event(message: dict, display_name: str = "") -> None
         record.save(update_fields=["processing_status", "processed_at"])
         return
 
-    record.processing_status = MessageLog.ProcessingStatus.PROCESSED
-    record.processed_at = timezone.now()
-    record.save(update_fields=["processing_status", "processed_at"])
-
+    # Persist the inbound ID before sending: don't retry blindly after a timeout, avoiding duplicates.
+    # Failed sends require reconciliation until a transactional outbox is implemented.
     try:
         sent_id = send_text_message(sender, reply)
     except Exception as exc:
         logger.exception("WhatsApp reply failed contact_suffix=%s", sender[-4:])
         record.processing_status = MessageLog.ProcessingStatus.FAILED
         record.error_code = type(exc).__name__[:80]
-        record.save(update_fields=["processing_status", "error_code"])
+        record.processed_at = timezone.now()
+        record.save(update_fields=["processing_status", "error_code", "processed_at"])
         return
 
+    record.processing_status = MessageLog.ProcessingStatus.PROCESSED
+    record.processed_at = timezone.now()
+    record.save(update_fields=["processing_status", "processed_at"])
     if sent_id:
         MessageLog.objects.get_or_create(
             external_message_id=sent_id,

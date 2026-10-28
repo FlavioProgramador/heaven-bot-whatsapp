@@ -1,55 +1,56 @@
 # Heaven Bot WhatsApp
 
-Robô determinístico de atendimento inicial pelo WhatsApp para o Heaven, desenvolvido com Python, Django e PostgreSQL, usando a API oficial WhatsApp Business Platform (Cloud API).
+Robô determinístico de atendimento inicial do Heaven usando Python, Django, PostgreSQL e a API oficial WhatsApp Business Platform (Cloud API). Não usa IA, automação do WhatsApp Web ou provedores intermediários.
 
-> **Status:** documentação inicial. A integração com a Meta depende de configuração e credenciais fornecidas pelo responsável. Nenhum número comercial foi alterado.
+## Estado do projeto
+O repositório contém a base do projeto Django, modelos de categorias, cursos, horários, contatos, logs de mensagens e configurações institucionais, administração Django, serviço HTTP inicial da Cloud API, webhook com desafio GET e validação HMAC SHA-256 em POST, menu por regras e testes iniciais.
 
-## Objetivo
+**Antes de produção:** executar testes, validar credenciais Meta de teste e revisar idempotência/retentativas, logs e retenção de dados pessoais, segurança e janela de atendimento. Nenhuma credencial real foi adicionada nem número comercial alterado.
 
-Permitir que clientes consultem modalidades, cursos, preços, horários e localização, ou solicitem atendimento humano. Nesta versão não há IA, LLM ou provedor intermediário.
+## Instalação no Windows (PowerShell)
+1. Instale Python e PostgreSQL; confirme:
+   ```powershell
+   py --version
+   psql --version
+   ```
+2. Crie o usuário e o banco PostgreSQL:
+   ```sql
+   CREATE USER heaven_bot WITH PASSWORD 'substitua-por-uma-senha-forte';
+   CREATE DATABASE heaven_bot OWNER heaven_bot;
+   ```
+3. Na pasta do projeto:
+   ```powershell
+   py -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   python -m pip install --upgrade pip
+   pip install -r requirements.txt
+   Copy-Item .env.example .env
+   ```
+4. Configure `DATABASE_URL` no `.env`. Codifique caracteres especiais da senha para URL. Gere a chave:
+   ```powershell
+   python -c "import secrets; print(secrets.token_urlsafe(50))"
+   ```
+   Use o resultado em `DJANGO_SECRET_KEY`. Mantenha DEBUG ligado somente no ambiente local.
+5. Execute:
+   ```powershell
+   python manage.py check
+   python manage.py migrate
+   python manage.py createsuperuser
+   python manage.py test
+   python manage.py runserver
+   ```
+6. Acesse `http://127.0.0.1:8000/admin/` e cadastre apenas dados oficiais do Heaven.
 
-## Escopo planejado
+## WhatsApp Cloud API
+Configure em `.env`: `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_ACCOUNT_ID`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_API_VERSION`. Nunca versione segredos.
 
-- [ ] Projeto Django modular
-- [ ] Persistência PostgreSQL e migrações
-- [ ] Administração de categorias, cursos, horários e informações institucionais
-- [ ] Máquina de estados determinística para o atendimento
-- [ ] Webhook com validação de desafio e assinatura
-- [ ] Envio de mensagens pela Cloud API
-- [ ] Idempotência e registro técnico de mensagens
-- [ ] Testes automatizados sem chamadas externas reais
-- [ ] Guia de instalação no Windows/PowerShell
-- [ ] Checklist para configurar a Meta e habilitar o número comercial
+Configure callback HTTPS `https://SEU_HOST/webhooks/whatsapp/`. O GET valida o verify token; o POST valida `X-Hub-Signature-256` usando o corpo bruto e o App Secret. Comece pelo número de teste Meta. Não migre o número comercial real sem autorização explícita. Túnel local serve para teste, mas não é infraestrutura de produção.
 
-## Princípios e limites
+## Fluxo
+Categorias e cursos são carregados do banco e precisam estar ativos. Preços ausentes são marcados como a confirmar. Horários são informativos e não confirmam vaga. Localização só aparece quando cadastrada. Pedido de atendimento humano pausa o robô até a equipe liberar o contato no Admin. `0` ou `MENU` volta ao menu, exceto durante atendimento humano. Não há sincronização das mensagens enviadas manualmente pelo aplicativo WhatsApp Business nem chat integrado para atendentes.
 
-- Usar somente a API oficial da Meta; não automatizar WhatsApp Web.
-- Não inventar preços, horários, endereço ou disponibilidade.
-- Não armazenar segredos no Git.
-- Não enviar mensagens de campanha ou proativas.
-- Solicitar autorização explícita antes de migrar ou alterar o número real.
-- O Django Admin será a interface inicial de administração; não haverá frontend independente nesta etapa.
+## Testes
+Execute `python manage.py test`. Testes externos devem usar mocks e nunca enviar mensagens reais. A conexão GitHub usada para editar os arquivos não executa Python localmente; confirme os resultados no Windows e no CI.
 
-## Tecnologias previstas
-
-- Python
-- Django
-- PostgreSQL
-- Requisições HTTP à WhatsApp Cloud API
-- Variáveis de ambiente para configuração
-
-As versões exatas e dependências serão registradas nos arquivos do projeto durante a implementação.
-
-## Configuração
-
-Consulte o arquivo `.env.example` (quando disponibilizado) para os nomes das variáveis de ambiente. Não compartilhe nem versione tokens de acesso, App Secret, senhas ou dados pessoais.
-
-O webhook da Meta precisa estar acessível por HTTPS. Um túnel local pode ser útil durante testes, mas não substitui infraestrutura de produção; o robô só fica disponível enquanto o backend está em execução.
-
-## Dados institucionais
-
-Os dados oficiais do Heaven (cursos, preços, horários, endereço e contato humano) devem ser cadastrados pela equipe responsável no painel administrativo. Nenhum dado comercial fictício deve ser tratado como real.
-
-## Desenvolvimento
-
-A documentação de instalação para Windows, comandos, testes, configuração do PostgreSQL e etapas da Meta será ampliada junto com a implementação do código.
+## Custos e limitações
+Não há IA nem intermediário no desenho. O custo depende das condições comerciais vigentes da Meta e de eventual hospedagem/túnel. O robô só funciona enquanto o backend está ativo. Falhas de envio são registradas e não repetidas cegamente; antes da produção, implemente reconciliação/retentativa segura e política documentada de retenção de logs.
