@@ -39,7 +39,7 @@ O repositório contém a base do projeto Django, modelos de categorias, cursos, 
    python manage.py test
    python manage.py runserver
    ```
-6. Acesse `http://127.0.0.1:8000/admin/` e cadastre apenas dados oficiais do Heaven.
+6. Execute `python manage.py load_heaven_catalog` para cadastrar o catálogo oficial inicial e acesse `http://127.0.0.1:8000/admin/` para revisar ou editar os dados.
 
 ## WhatsApp Cloud API
 Configure em `.env`: `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_ACCOUNT_ID`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET`, `WHATSAPP_API_VERSION`. Nunca versione segredos.
@@ -47,7 +47,7 @@ Configure em `.env`: `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATS
 Configure callback HTTPS `https://SEU_HOST/webhooks/whatsapp/`. O GET valida o verify token; o POST valida `X-Hub-Signature-256` usando o corpo bruto e o App Secret. Comece pelo número de teste Meta. Não migre o número comercial real sem autorização explícita. Túnel local serve para teste, mas não é infraestrutura de produção.
 
 ## Fluxo
-Categorias e cursos são carregados do banco e precisam estar ativos. Preços ausentes são marcados como a confirmar. Horários são informativos e não confirmam vaga. Localização só aparece quando cadastrada. Pedido de atendimento humano pausa o robô até a equipe liberar o contato no Admin. `0` ou `MENU` volta ao menu, exceto durante atendimento humano. Não há sincronização das mensagens enviadas manualmente pelo aplicativo WhatsApp Business nem chat integrado para atendentes.
+Categorias e cursos são carregados do banco e precisam estar ativos. O comando `python manage.py load_heaven_catalog` carrega as mensalidades oficiais: Música (R$ 110; Viva R$ 100), Futsal (R$ 85; Viva R$ 80), Ballet (R$ 110; Viva R$ 100), Ginástica Rítmica — Escolinha (R$ 100) e Equipe (R$ 120), Natação (R$ 120; Viva R$ 110), Jiu-jitsu (R$ 85; Viva R$ 80) e Karatê (R$ 80; Viva R$ 70). Todos os valores são mensais. O desconto Viva só é exibido quando foi informado; não foi presumido para Ginástica Rítmica. A frequência começa em 1 aula por semana, marcada como provisória até confirmação pelo Heaven no Admin. Preços ausentes são marcados como a confirmar. Horários são informativos e não confirmam vaga. Localização só aparece quando cadastrada. Pedido de atendimento humano pausa o robô até a equipe liberar o contato no Admin. `0` ou `MENU` volta ao menu, exceto durante atendimento humano. Não há sincronização das mensagens enviadas manualmente pelo aplicativo WhatsApp Business nem chat integrado para atendentes.
 
 ## Testes
 Execute `python manage.py test`. Testes externos devem usar mocks e nunca enviar mensagens reais. A conexão GitHub usada para editar os arquivos não executa Python localmente; confirme os resultados no Windows e no CI.
