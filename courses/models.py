@@ -30,6 +30,9 @@ class Course(models.Model):
     description = models.TextField("descrição", blank=True)
     price = models.DecimalField("preço", max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
     billing_unit = models.CharField("unidade de cobrança", max_length=20, choices=BillingUnit.choices, default=BillingUnit.OTHER)
+    viva_price = models.DecimalField("mensalidade para alunos da escola Viva", max_digits=10, decimal_places=2, null=True, blank=True, validators=[MinValueValidator(0)])
+    lessons_per_week = models.PositiveSmallIntegerField("aulas por semana", default=1, validators=[MinValueValidator(1)])
+    frequency_confirmed = models.BooleanField("frequência confirmada pelo Heaven", default=False)
     lesson_duration_minutes = models.PositiveSmallIntegerField("duração da aula (minutos)", null=True, blank=True)
     additional_information = models.TextField("informações adicionais", blank=True)
     is_active = models.BooleanField("ativo", default=True)
@@ -52,8 +55,14 @@ class Course(models.Model):
         whole = f"{int(whole):,}".replace(",", ".")
         unit = dict(self.BillingUnit.choices).get(self.billing_unit, "A confirmar")
         if self.billing_unit == self.BillingUnit.OTHER:
-            return f"R$ {whole},{decimal} ({unit.lower()})."
-        return f"R$ {whole},{decimal} — {unit.lower()}."
+            regular = f"R$ {whole},{decimal} ({unit.lower()})"
+        else:
+            regular = f"R$ {whole},{decimal} — {unit.lower()}"
+        if self.viva_price is not None:
+            viva_whole, viva_decimal = f"{self.viva_price:.2f}".split(".")
+            viva_whole = f"{int(viva_whole):,}".replace(",", ".")
+            return f"{regular}. Alunos da escola Viva: R$ {viva_whole},{viva_decimal} — mensalidade."
+        return regular + "."
 
 
 class Schedule(models.Model):
