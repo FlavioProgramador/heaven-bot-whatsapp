@@ -39,7 +39,7 @@ A base contém modelos para categorias, cursos, horários, contatos, mensagens e
    python manage.py test
    python manage.py runserver
    ```
-6. Acesse `http://127.0.0.1:8000/admin/` e cadastre dados oficiais do Heaven. Não há cursos, preços ou endereço fictícios pré-cadastrados.
+6. Carregue o catálogo oficial inicial e depois acesse `http://127.0.0.1:8000/admin/` para revisar/editar: `python manage.py load_heaven_catalog`. O comando é idempotente e cria/atualiza as modalidades e mensalidades informadas pelo Heaven. A frequência fica provisoriamente em 1 aula por semana até confirmação.
 
 ## WhatsApp Cloud API
 Configure no `.env`: `WHATSAPP_ACCESS_TOKEN`, `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_BUSINESS_ACCOUNT_ID`, `WHATSAPP_VERIFY_TOKEN`, `WHATSAPP_APP_SECRET` e `WHATSAPP_API_VERSION`. Não versione credenciais.
@@ -49,6 +49,9 @@ Configure callback HTTPS `https://SEU_HOST/webhooks/whatsapp/`. O GET usa o veri
 ## Atendimento
 - O menu usa categorias e cursos ativos cadastrados.
 - Preço ausente é mostrado como “a confirmar”; horário não significa vaga garantida.
+- O catálogo oficial inicial contém Música (R$ 110; Viva R$ 100), Futsal (R$ 85; Viva R$ 80), Ballet (R$ 110; Viva R$ 100), Ginástica Rítmica — Escolinha (R$ 100) e Equipe (R$ 120), Natação (R$ 120; Viva R$ 110), Jiu-jitsu (R$ 85; Viva R$ 80) e Karatê (R$ 80; Viva R$ 70). Valores são mensalidades em reais.
+- O desconto Viva só é exibido para modalidades com preço Viva cadastrado; não foi presumido desconto para Ginástica Rítmica.
+- A frequência inicial de 1 aula por semana é provisória e exibida como sujeita à confirmação; não cria dias nem horários fictícios.
 - Localização só aparece quando a equipe cadastra endereço/link.
 - Pedido de atendimento humano pausa respostas automáticas até a equipe reativar o contato no Admin.
 - `0` ou `MENU` retorna ao menu, exceto durante atendimento humano.
