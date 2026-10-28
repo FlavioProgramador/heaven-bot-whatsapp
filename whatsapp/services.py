@@ -146,6 +146,7 @@ def process_inbound_message(contact: Contact, body: str) -> str | None:
         lines = [f"Cursos de {category.name}:"]
         for i, course in enumerate(courses, start=1):
             lines.append(f"{i} - {course.name}: {course.formatted_price()}")
+            lines.append(_frequency_text(course))
         lines.append("\nDigite 0 para voltar ao menu principal.")
         return "\n".join(lines)
 
@@ -161,6 +162,7 @@ def process_inbound_message(contact: Contact, body: str) -> str | None:
             schedules = list(Schedule.objects.filter(course=course, is_active=True).order_by("weekday", "starts_at")[:12])
             lines = [f"{course.name}", course.description.strip() or "Descrição ainda não cadastrada."]
             lines.append(course.formatted_price())
+            lines.append(_frequency_text(course))
             if schedules:
                 lines.append("Horários divulgados (não representam vaga confirmada):")
                 lines.extend(f"- {s.get_weekday_display()}: {s.starts_at:%H:%M} às {s.ends_at:%H:%M}" for s in schedules)
@@ -187,6 +189,7 @@ def _all_course_details() -> str:
     for course in courses:
         lines.append(f"\n{course.name} ({course.category.name})")
         lines.append(course.formatted_price())
+        lines.append(_frequency_text(course))
         schedules = list(course.schedules.filter(is_active=True).order_by("weekday", "starts_at")[:4])
         if schedules:
             lines.extend(f"- {s.get_weekday_display()}: {s.starts_at:%H:%M} às {s.ends_at:%H:%M}" for s in schedules)
@@ -222,3 +225,11 @@ def process_status_event(status_payload: dict) -> None:
         record.processing_status = MessageLog.ProcessingStatus.FAILED
         record.error_code = str(first_error.get("code", "send_failed"))[:80]
     record.save(update_fields=["processing_status", "error_code"])
+
+
+def _frequency_text(course) -> str:
+    unit = "aula" if course.lessons_per_week == 1 else "aulas"
+    frequency = f"Frequência: {course.lessons_per_week} {unit} por semana."
+    if not course.frequency_confirmed:
+        return frequency + " Informação provisória; confirme com a equipe do Heaven."
+    return frequency
